@@ -34,11 +34,12 @@ const emptyCompany = (): CompanyFields => ({
   contact: emptyContact(),
 });
 
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.4.0";
 
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
   const [portalId, setPortalId] = useState<string | null>(null);
 
   const [partner, setPartner] = useState<CompanyFields>(emptyCompany());
@@ -50,32 +51,25 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CreatedEntity[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sessionExpired, setSessionExpired] = useState(false);
 
-  // Check auth status on load
+  // Check if user already identified
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
-        setLoggedIn(data.loggedIn);
-        if (data.portalId) setPortalId(data.portalId);
+        if (data.loggedIn) setUserName(data.userName);
       })
-      .catch(() => setLoggedIn(false))
+      .catch(() => {})
       .finally(() => setAuthLoading(false));
   }, []);
 
-  // Fetch association labels when logged in
+  // Fetch labels when identified
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!userName) return;
     setLabelsLoading(true);
     setError(null);
     fetch("/api/labels")
       .then(async (r) => {
-        if (r.status === 401) {
-          setSessionExpired(true);
-          setLoggedIn(false);
-          return;
-        }
         const data = await r.json();
         if (!r.ok) {
           setError(data.error || `Labels fetch failed: ${r.status}`);
@@ -89,7 +83,27 @@ export default function Home() {
       })
       .catch((err) => setError(err.message || "Failed to fetch labels"))
       .finally(() => setLabelsLoading(false));
-  }, [loggedIn]);
+  }, [userName]);
+
+  const handleIdentify = async () => {
+    if (!nameInput.trim()) return;
+    const res = await fetch("/api/auth/me", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: nameInput.trim() }),
+    });
+    const data = await res.json();
+    if (data.loggedIn) setUserName(data.userName);
+  };
+
+  const handleSignOut = async () => {
+    await fetch("/api/auth/me", { method: "DELETE" });
+    setUserName(null);
+    setNameInput("");
+    setLabels([]);
+    setResults(null);
+    setPortalId(null);
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -107,11 +121,6 @@ export default function Home() {
           portalId,
         }),
       });
-      if (res.status === 401) {
-        setSessionExpired(true);
-        setLoggedIn(false);
-        return;
-      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       setResults(data.created);
@@ -166,55 +175,47 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Session expired message */}
-        {sessionExpired && (
-          <div className="animate-in mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <p className="text-sm text-yellow-400 mb-2">
-              Your session has expired. Please reconnect to continue.
-            </p>
-            <a
-              href="/api/auth/install"
-              className="inline-block px-4 py-2 rounded-lg text-sm font-medium
-                bg-[var(--accent)] text-white hover:brightness-110 transition-all"
-            >
-              Reconnect to HubSpot
-            </a>
-          </div>
-        )}
-
-        {/* Not logged in — show connect button */}
-        {!loggedIn && !sessionExpired ? (
+        {/* Name entry */}
+        {!userName ? (
           <div className="animate-in animate-in-delay-1">
-            <Section title="Connect your HubSpot account">
+            <Section title="Who are you?">
               <p className="text-sm text-[var(--text-muted)] mb-4">
-                Sign in with HubSpot to get started. This app needs access to
-                create companies, contacts, and read association schemas.
+                Enter your name so we can keep track of who created what.
               </p>
-              <a
-                href="/api/auth/install"
-                className="inline-block w-full text-center py-2.5 rounded-lg font-medium text-sm transition-all
-                  bg-[var(--accent)] text-white hover:brightness-110"
+              <Input
+                label="Your name"
+                value={nameInput}
+                onChange={setNameInput}
+                placeholder="e.g. Casey"
+              />
+              <button
+                onClick={handleIdentify}
+                disabled={!nameInput.trim()}
+                className="mt-4 w-full py-2.5 rounded-lg font-medium text-sm transition-all
+                  bg-[var(--accent)] text-white hover:brightness-110
+                  disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                Connect to HubSpot
-              </a>
+                Continue
+              </button>
             </Section>
           </div>
-        ) : loggedIn ? (
+        ) : (
           <>
-            {/* Auth indicator */}
+            {/* User indicator */}
             <div className="animate-in flex items-center justify-between mb-6 px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
                 <span className="text-xs font-mono text-[var(--text-muted)]">
-                  Connected{portalId ? ` · Portal ${portalId}` : ""}
+                  Logged in as {userName}
+                  {portalId ? ` · Portal ${portalId}` : ""}
                 </span>
               </div>
-              <a
-                href="/api/auth/logout"
+              <button
+                onClick={handleSignOut}
                 className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
               >
-                Disconnect
-              </a>
+                Switch user
+              </button>
             </div>
 
             {/* Partner */}
@@ -389,7 +390,7 @@ export default function Home() {
               </div>
             )}
           </>
-        ) : null}
+        )}
       </div>
     </main>
   );

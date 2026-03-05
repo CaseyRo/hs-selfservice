@@ -2,11 +2,7 @@ import { getIronSession, SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
 
 export type SessionData = {
-  accessToken?: string;
-  refreshToken?: string;
-  expiresAt?: number; // Unix timestamp (ms)
-  portalId?: string;
-  oauthState?: string;
+  userName?: string;
 };
 
 export const sessionOptions: SessionOptions = {

@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { getHubSpotToken, AuthError } from "@/lib/hubspot-token";
+import { getSession } from "@/lib/session";
 
 const HUBSPOT_API = "https://api.hubapi.com";
 
 export async function GET() {
   try {
-    let token: string;
-    try {
-      token = await getHubSpotToken();
-    } catch (e) {
-      if (e instanceof AuthError) {
-        return NextResponse.json({ error: e.message }, { status: 401 });
-      }
-      throw e;
+    const token = process.env.HUBSPOT_TOKEN;
+    if (!token) {
+      return NextResponse.json({ error: "Server misconfigured: missing HUBSPOT_TOKEN" }, { status: 500 });
+    }
+
+    const session = await getSession();
+    if (!session.userName) {
+      return NextResponse.json({ error: "Not identified" }, { status: 401 });
     }
 
     const headers = {
@@ -38,7 +38,7 @@ export async function GET() {
 
     const labelsData = await labelsRes.json();
 
-    // Also fetch portal ID for building record URLs
+    // Fetch portal ID for building record URLs
     let portalId: string | null = null;
     try {
       const meRes = await fetch(`${HUBSPOT_API}/account-info/v3/details`, { headers });
@@ -56,6 +56,7 @@ export async function GET() {
       category: r.category || "HUBSPOT_DEFINED",
     }));
 
+    console.log(`[audit] ${session.userName} fetched ${labels.length} association labels`);
     return NextResponse.json({ labels, portalId });
   } catch (e: any) {
     console.error("[labels] Error:", e.message);
