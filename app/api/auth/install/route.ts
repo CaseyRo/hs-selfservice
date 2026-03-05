@@ -3,7 +3,9 @@ import { getSession } from "@/lib/session";
 import crypto from "crypto";
 
 const SCOPES = [
+  "crm.objects.companies.read",
   "crm.objects.companies.write",
+  "crm.objects.contacts.read",
   "crm.objects.contacts.write",
   "crm.schemas.companies.read",
 ].join(" ");
