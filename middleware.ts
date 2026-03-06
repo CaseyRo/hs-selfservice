@@ -9,13 +9,9 @@ export function middleware(req: NextRequest) {
 
   const auth = req.headers.get("authorization");
   if (auth) {
-    const [scheme, encoded] = auth.split(" ");
-    if (scheme === "Basic" && encoded) {
-      const decoded = atob(encoded);
-      const [u, p] = decoded.split(":");
-      if (u === user && p === pass) {
-        return NextResponse.next();
-      }
+    const expected = `Basic ${btoa(`${user}:${pass}`)}`;
+    if (auth === expected) {
+      return NextResponse.next();
     }
   }
 
