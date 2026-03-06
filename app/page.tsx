@@ -121,7 +121,7 @@ export default function Home() {
   const [labels, setLabels] = useState<AssociationLabel[]>([]);
   const [labelsLoading, setLabelsLoading] = useState(false);
 
-  const [portalRole, setPortalRole] = useState("Administrator");
+  const [portalRole, setPortalRole] = useState("Admin-RW");
 
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<CreatedEntity[] | null>(null);
@@ -447,9 +447,9 @@ export default function Home() {
                       bg-[var(--bg-input)] border border-[var(--border-default)]
                       text-[var(--text-primary)] transition-colors"
                   >
-                    <option value="Administrator">Administrator</option>
-                    <option value="User - Read & Write">User - Read &amp; Write</option>
-                    <option value="User - Read Only">User - Read Only</option>
+                    <option value="Admin-RW">Administrator</option>
+                    <option value="User-RW">User - Read &amp; Write</option>
+                    <option value="User-RO">User - Read Only</option>
                   </select>
                 </div>
               </Section>
