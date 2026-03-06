@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const user = process.env.BASIC_AUTH_USER;
   const pass = process.env.BASIC_AUTH_PASS;
 
   // Skip auth if env vars aren't set or if DISABLE_AUTH is set (for testing)
   if (!user || !pass || process.env.DISABLE_AUTH === "1") return NextResponse.next();
 
-  const authHeader = req.headers.get("authorization");
-
-  if (authHeader) {
-    const [scheme, encoded] = authHeader.split(" ");
+  const auth = req.headers.get("authorization");
+  if (auth) {
+    const [scheme, encoded] = auth.split(" ");
     if (scheme === "Basic" && encoded) {
       const decoded = atob(encoded);
       const [u, p] = decoded.split(":");
@@ -22,9 +21,7 @@ export function proxy(req: NextRequest) {
 
   return new NextResponse("Authentication required", {
     status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="HS Self Service"',
-    },
+    headers: { "WWW-Authenticate": 'Basic realm="Restricted"' },
   });
 }
 
